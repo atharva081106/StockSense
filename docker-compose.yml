@@ -1,0 +1,57 @@
+version: "3.9"
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: stocksense-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  python-service:
+    build:
+      context: ./python-service
+      dockerfile: Dockerfile
+    container_name: stocksense-python
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: stocksense-server
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/stocksense
+      - PYTHON_SERVICE_URL=http://python-service:8000
+      - JWT_SECRET=${JWT_SECRET:-change_this_secret}
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - FROM_EMAIL=${FROM_EMAIL:-}
+      - CLIENT_URL=http://localhost:5173
+      - NODE_ENV=production
+    depends_on:
+      - mongo
+      - python-service
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: stocksense-client
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      - server
+
+volumes:
+  mongo_data:
