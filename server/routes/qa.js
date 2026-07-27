@@ -3,7 +3,7 @@ const router  = express.Router();
 const axios   = require("axios");
 const { protect } = require("../middleware/auth");
 
-const PY = process.env.PYTHON_SERVICE_URL || "http://localhost:8000";
+const PY = (process.env.PYTHON_SERVICE_URL || "http://localhost:8000").replace(/\/$/, "");
 
 /* Fetch all relevant data for a stock in parallel */
 async function fetchStockContext(symbol) {

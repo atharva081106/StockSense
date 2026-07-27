@@ -2,7 +2,7 @@ const express = require("express");
 const router  = express.Router();
 const axios   = require("axios");
 
-const PY = process.env.PYTHON_SERVICE_URL || "http://localhost:8000";
+const PY = (process.env.PYTHON_SERVICE_URL || "http://localhost:8000").replace(/\/$/, "");
 
 // GET /api/news/:symbol
 router.get("/:symbol", async (req, res) => {
