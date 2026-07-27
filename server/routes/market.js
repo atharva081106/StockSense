@@ -4,13 +4,18 @@ const axios   = require("axios");
 
 const PY = (process.env.PYTHON_SERVICE_URL || "http://localhost:8000").replace(/\/$/, "");
 
-const proxy = async (url, res) => {
-  try {
-    const r = await axios.get(url, { timeout: 45000 });
-    res.json(r.data);
-  } catch (err) {
-    if (err.response) res.status(err.response.status).json(err.response.data);
-    else res.status(503).json({ error: "Python service offline" });
+const proxy = async (url, res, retries = 2) => {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const r = await axios.get(url, { timeout: 60000 });
+      return res.json(r.data);
+    } catch (err) {
+      if (attempt === retries) {
+        if (err.response) return res.status(err.response.status).json(err.response.data);
+        return res.status(503).json({ error: "Python service starting up or offline. Please refresh in 20 seconds." });
+      }
+      await new Promise(r => setTimeout(r, 2000));
+    }
   }
 };
 

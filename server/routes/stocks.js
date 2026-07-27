@@ -5,13 +5,18 @@ const { protect } = require("../middleware/auth");
 
 const PY = (process.env.PYTHON_SERVICE_URL || "http://localhost:8000").replace(/\/$/, "");
 
-const proxy = async (url, res, params = {}) => {
-  try {
-    const r = await axios.get(url, { params, timeout: 45000 });
-    res.json(r.data);
-  } catch (err) {
-    if (err.response) res.status(err.response.status).json(err.response.data);
-    else res.status(503).json({ error: "Python data service is offline. Start it with: python main.py" });
+const proxy = async (url, res, params = {}, retries = 2) => {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const r = await axios.get(url, { params, timeout: 60000 });
+      return res.json(r.data);
+    } catch (err) {
+      if (attempt === retries) {
+        if (err.response) return res.status(err.response.status).json(err.response.data);
+        return res.status(503).json({ error: "Python data service is starting up or offline. Please retry in 20 seconds." });
+      }
+      await new Promise(r => setTimeout(r, 2000));
+    }
   }
 };
 

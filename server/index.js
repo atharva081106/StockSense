@@ -20,6 +20,7 @@ const qaRoutes         = require("./routes/qa");
 const { setupSocketHandlers } = require("./socket/livePrice");
 
 const app    = express();
+app.set("trust proxy", 1);
 const server = http.createServer(app);
 const corsOriginHandler = (origin, callback) => {
   // Allow requests with no origin (like mobile apps, curl, or server-to-server) or from Vercel / localhost
