@@ -4,7 +4,8 @@ let socket = null;
 
 export const getSocket = () => {
   if (!socket) {
-    socket = io("/", {
+    const target = import.meta.env.VITE_SERVER_URL || "/";
+    socket = io(target, {
       auth: { token: localStorage.getItem("ss_token") },
       reconnection: true,
       reconnectionAttempts: 5,
