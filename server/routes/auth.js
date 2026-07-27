@@ -30,16 +30,21 @@ router.post("/register",
     if (!errors.isEmpty())
       return res.status(400).json({ error: errors.array()[0].msg });
 
-    const { name, email, password, defaultMarket } = req.body;
-    if (await User.findOne({ email }))
-      return res.status(400).json({ error: "Email already registered" });
+    try {
+      const { name, email, password, defaultMarket } = req.body;
+      if (await User.findOne({ email }))
+        return res.status(400).json({ error: "Email already registered" });
 
-    const user = await User.create({
-      name, email, password,
-      defaultMarket: defaultMarket || "NSE",
-      currency: defaultMarket === "GLOBAL" ? "USD" : "INR",
-    });
-    sendToken(user, 201, res);
+      const user = await User.create({
+        name, email, password,
+        defaultMarket: defaultMarket || "NSE",
+        currency: defaultMarket === "GLOBAL" ? "USD" : "INR",
+      });
+      sendToken(user, 201, res);
+    } catch (err) {
+      console.error("Registration error:", err);
+      res.status(500).json({ error: "Registration failed: " + (err.message || "Server error") });
+    }
   }
 );
 
@@ -54,14 +59,19 @@ router.post("/login",
     if (!errors.isEmpty())
       return res.status(400).json({ error: errors.array()[0].msg });
 
-    const { email, password } = req.body;
-    const user = await User.findOne({ email }).select("+password");
-    if (!user || !(await user.comparePassword(password)))
-      return res.status(401).json({ error: "Invalid email or password" });
+    try {
+      const { email, password } = req.body;
+      const user = await User.findOne({ email }).select("+password");
+      if (!user || !(await user.comparePassword(password)))
+        return res.status(401).json({ error: "Invalid email or password" });
 
-    user.lastLogin = new Date();
-    await user.save({ validateBeforeSave: false });
-    sendToken(user, 200, res);
+      user.lastLogin = new Date();
+      await user.save({ validateBeforeSave: false });
+      sendToken(user, 200, res);
+    } catch (err) {
+      console.error("Login error:", err);
+      res.status(500).json({ error: "Login failed: " + (err.message || "Server error") });
+    }
   }
 );
 
