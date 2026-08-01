@@ -3,7 +3,7 @@ const cron   = require("node-cron");
 const jwt    = require("jsonwebtoken");
 const { checkAndTriggerAlerts } = require("../routes/alerts");
 
-const PY = process.env.PYTHON_SERVICE_URL || "http://localhost:8000";
+const PY = (process.env.PYTHON_SERVICE_URL || "http://localhost:8000").replace(/\/$/, "");
 
 // symbol -> Set<socketId>
 const subs    = new Map();

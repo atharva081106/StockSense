@@ -1,0 +1,33 @@
+name: Keep Render Services Awake 24/7
+
+on:
+  schedule:
+    # Trigger every 10 minutes to keep Render services awake
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  keep-alive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Node Express Server
+        run: |
+          NODE_URL="${{ secrets.NODE_BACKEND_URL }}"
+          if [ -z "$NODE_URL" ]; then
+            echo "⚠️ NODE_BACKEND_URL secret is not set yet in GitHub Repository settings."
+          else
+            echo "📡 Pinging Node Backend: $NODE_URL"
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$NODE_URL")
+            echo "Status Code: $HTTP_CODE"
+          fi
+
+      - name: Ping Python Microservice
+        run: |
+          PYTHON_URL="${{ secrets.PYTHON_SERVICE_URL }}"
+          if [ -z "$PYTHON_URL" ]; then
+            echo "⚠️ PYTHON_SERVICE_URL secret is not set yet in GitHub Repository settings."
+          else
+            echo "🐍 Pinging Python Microservice: $PYTHON_URL"
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$PYTHON_URL")
+            echo "Status Code: $HTTP_CODE"
+          fi

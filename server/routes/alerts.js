@@ -83,7 +83,7 @@ const checkAndTriggerAlerts = async (io) => {
   try {
     const axios = require("axios");
     const User  = require("../models/User");
-    const PY    = process.env.PYTHON_SERVICE_URL || "http://localhost:8000";
+    const PY    = (process.env.PYTHON_SERVICE_URL || "http://localhost:8000").replace(/\/$/, "");
 
     const active = await Alert.find({ isActive: true, isTriggered: false });
     if (!active.length) return;

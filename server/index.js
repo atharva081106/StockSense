@@ -62,7 +62,11 @@ setupSocketHandlers(io);
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`🚀  Server http://localhost:${PORT}`);
-  console.log(`🐍  Python service: ${process.env.PYTHON_SERVICE_URL}`);
+const pyUrl = process.env.PYTHON_SERVICE_URL || "http://localhost:8000";
+console.log(`🐍  Python service URL: ${pyUrl}`);
+if (!process.env.PYTHON_SERVICE_URL) {
+  console.warn("⚠️  PYTHON_SERVICE_URL is not set in environment variables! In production, set PYTHON_SERVICE_URL on Render to your deployed Python service URL.");
+}
 });
 
 mongoose.connect(process.env.MONGO_URI || "mongodb://127.0.0.1:27017/stocksense")
