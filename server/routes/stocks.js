@@ -5,10 +5,10 @@ const { protect } = require("../middleware/auth");
 
 const PY = (process.env.PYTHON_SERVICE_URL || "http://localhost:8000").replace(/\/$/, "");
 
-const proxy = async (url, res, params = {}, retries = 2) => {
+const proxy = async (url, res, params = {}, retries = 1) => {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      const r = await axios.get(url, { params, timeout: 60000 });
+      const r = await axios.get(url, { params, timeout: 15000 });
       return res.json(r.data);
     } catch (err) {
       if (attempt === retries) {

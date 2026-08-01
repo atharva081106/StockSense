@@ -258,6 +258,25 @@ def health_check():
     return {"status": "ok", "service": "StockSense Python Data Engine", "version": "3.0.0"}
 
 # ──────────────────────────────────────────────────────────────────────────────
+# HIGH PERFORMANCE CACHING & PARALLEL WORKER ENGINE
+# ──────────────────────────────────────────────────────────────────────────────
+import time
+from concurrent.futures import ThreadPoolExecutor
+
+CACHE = {}
+executor = ThreadPoolExecutor(max_workers=25)
+
+def get_cache(key: str, ttl_seconds: int = 120):
+    if key in CACHE:
+        data, timestamp = CACHE[key]
+        if time.time() - timestamp < ttl_seconds:
+            return data
+    return None
+
+def set_cache(key: str, data):
+    CACHE[key] = (data, time.time())
+
+# ──────────────────────────────────────────────────────────────────────────────
 # HELPERS
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -739,6 +758,10 @@ def get_news(symbol: str, limit: int = Query(10, ge=1, le=30)):
 
 @app.get("/market/movers")
 def get_movers():
+    cached = get_cache("market_movers", 180)
+    if cached:
+        return cached
+
     indian = [
         "RELIANCE.NS","TCS.NS","HDFCBANK.NS","INFY.NS","ICICIBANK.NS",
         "HINDUNILVR.NS","SBIN.NS","BAJFINANCE.NS","BHARTIARTL.NS","KOTAKBANK.NS",
@@ -748,8 +771,8 @@ def get_movers():
         "AAPL","MSFT","GOOGL","AMZN","NVDA",
         "META","TSLA","JPM","V","BRK-B",
     ]
-    results = []
-    for sym in indian + global_:
+
+    def fetch_mover(sym):
         try:
             t = yf.Ticker(sym)
             fi = getattr(t, "fast_info", None)
@@ -764,18 +787,22 @@ def get_movers():
             if price and prev_close:
                 chg = round(price - prev_close, 2)
                 chg_pct = round((chg / prev_close) * 100, 2)
-                results.append({
+                return {
                     "symbol":        sym,
                     "name":          sym.replace(".NS","").replace(".BO",""),
                     "price":         price,
                     "change":        chg,
                     "changePercent": chg_pct,
                     "currency":      "INR" if ".NS" in sym or ".BO" in sym else "USD",
-                })
+                }
         except:
-            pass
+            return None
+
+    results = list(filter(None, executor.map(fetch_mover, indian + global_)))
     results.sort(key=lambda x: x.get("changePercent", 0), reverse=True)
-    return {"gainers": results[:5], "losers": sorted(results, key=lambda x: x.get("changePercent", 0))[:5]}
+    res = {"gainers": results[:5], "losers": sorted(results, key=lambda x: x.get("changePercent", 0))[:5]}
+    set_cache("market_movers", res)
+    return res
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -784,6 +811,10 @@ def get_movers():
 
 @app.get("/market/indices")
 def get_indices():
+    cached = get_cache("market_indices", 180)
+    if cached:
+        return cached
+
     indices = {
         "NIFTY 50":    "^NSEI",
         "SENSEX":      "^BSESN",
@@ -796,8 +827,9 @@ def get_indices():
         "NIKKEI 225":  "^N225",
         "HANG SENG":   "^HSI",
     }
-    results = []
-    for name, sym in indices.items():
+
+    def fetch_index(item):
+        name, sym = item
         try:
             t = yf.Ticker(sym)
             fi = getattr(t, "fast_info", None)
@@ -812,17 +844,21 @@ def get_indices():
             chg = round(price - prev_close, 2) if (price and prev_close) else 0.0
             chg_pct = round((chg / prev_close) * 100, 2) if prev_close else 0.0
             
-            results.append({
+            return {
                 "name":          name,
                 "symbol":        sym,
                 "price":         price or 24000.0,
                 "change":        chg,
                 "changePercent": chg_pct,
                 "currency":      "INR" if ".NS" in sym or ".BO" in sym or "NIFTY" in name or "SENSEX" in name else "USD",
-            })
+            }
         except:
-            pass
-    return {"indices": results}
+            return None
+
+    results = list(filter(None, executor.map(fetch_index, indices.items())))
+    res = {"indices": results}
+    set_cache("market_indices", res)
+    return res
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -831,7 +867,10 @@ def get_indices():
 
 @app.get("/market/sectors")
 def get_sectors():
-    """Returns sector performance for NSE sectors + global ETFs"""
+    cached = get_cache("market_sectors", 180)
+    if cached:
+        return cached
+
     sector_etfs = {
         "Nifty IT":          "^CNXIT",
         "Nifty Bank":        "^NSEBANK",
@@ -848,8 +887,9 @@ def get_sectors():
         "US Energy (XLE)":   "XLE",
         "US Consumer (XLY)": "XLY",
     }
-    results = []
-    for name, sym in sector_etfs.items():
+
+    def fetch_sector(item):
+        name, sym = item
         try:
             t = yf.Ticker(sym)
             fi = getattr(t, "fast_info", None)
@@ -864,17 +904,21 @@ def get_sectors():
             chg = round(price - prev_close, 2) if (price and prev_close) else 0.0
             chg_pct = round((chg / prev_close) * 100, 2) if prev_close else 0.0
             
-            results.append({
+            return {
                 "sector":        name,
                 "symbol":        sym,
                 "price":         price or 100.0,
                 "changePercent": chg_pct,
                 "change":        chg,
-            })
+            }
         except:
-            pass
+            return None
+
+    results = list(filter(None, executor.map(fetch_sector, sector_etfs.items())))
     results.sort(key=lambda x: x.get("changePercent", 0), reverse=True)
-    return {"sectors": results}
+    res = {"sectors": results}
+    set_cache("market_sectors", res)
+    return res
 
 
 # ──────────────────────────────────────────────────────────────────────────────
